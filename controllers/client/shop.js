@@ -852,7 +852,7 @@ exports.postCreateCheckOut = async (req, res, next) => {
     req.body.merchant_id =  process.env.MERCHANT_ID;
     req.body.redirect_url = '/client/offers/onSuccessPayment';
     req.body.cancel_url = '/client/offers/cancelThePayment';
-    
+    req.body.language = 'EN';
 
     const errors = validationResult(req);
     console.log(order_id);
@@ -915,7 +915,7 @@ exports.postCreateCheckOut = async (req, res, next) => {
         }
         console.log(reqBody);
         encRequest = ccav.encrypt(reqBody,workingKey); 
-        formbody = '<form id="nonseamless" method="post" name="redirect" action="https://test.ccavenue.ae/transaction/transaction.do?command=initiateTransaction"/> <input type="hidden" id="encRequest" name="encRequest" value="' + encRequest + '"><input type="hidden" name="access_code" id="access_code" value="' + accessCode + '"><script language="javascript">document.redirect.submit();</script></form>';
+        formbody = '<form id="nonseamless" method="post" name="redirect" action="https://secure.ccavenue.ae/transaction/transaction.do?command=initiateTransaction"/> <input type="hidden" id="encRequest" name="encRequest" value="' + encRequest + '"><input type="hidden" name="access_code" id="access_code" value="' + accessCode + '"><script language="javascript">document.redirect.submit();</script></form>';
        
         res.writeHeader(200, {"Content-Type": "text/html"});
         res.write(formbody);
