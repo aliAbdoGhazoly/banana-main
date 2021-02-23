@@ -960,7 +960,7 @@ exports.onSuccessPayment = async (req, res, next) => {
         ccavPOST = '';
         responseData = {};
 
-        request.on('data', function (data) {
+        req.on('data', function (data) {
         ccavEncResponse += data;
         ccavPOST =  qs.parse(ccavEncResponse);
         var encryption = ccavPOST.encResp;
@@ -968,7 +968,7 @@ exports.onSuccessPayment = async (req, res, next) => {
         ccavResponse.split('&').map(i => i.split('=')).forEach(j => responseData[j[0].trim()] = j[1])
         });
 
-        request.on('end', async () => {
+        req.on('end', async () => {
             if (responseData.order_status && responseData.order_status == 'Success') {
                 const offerId = responseData.order_id
                 try {    
