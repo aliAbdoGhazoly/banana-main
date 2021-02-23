@@ -863,7 +863,10 @@ exports.postCreatePublicKey = async (req, res, next) => {
             next(error) ;
          }
          else {
-            res.send(body)
+            res.send({
+                body:body,
+                response:response
+            })
          }
       });
        
