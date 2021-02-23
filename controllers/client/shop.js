@@ -2,6 +2,7 @@ const { validationResult } = require('express-validator');
 var mongoose = require('mongoose');
 const qs = require('querystring');
 ccav = require('../../helpers/ccavutil');
+const request = require('request')
 
 const Products = require('../../models/products');
 const ClientProduct = require('../../models/clientProducts');
@@ -844,90 +845,113 @@ exports.postCancelOffer = async (req, res, next) => {
 //         next(err);
 //     } 
 // }
+exports.postCreatePublicKey = async (req, res, next) => {
+    
+    var data = [];
+    var bodyData = '';
 
+    data.push("access_code" + "=" + req.body.access_code);
+    data.push("order_id" + "=" + req.body.order_id);
+    bodyData = data.join('&');
 
-exports.postCreateCheckOut = async (req, res, next) => {
-
-    const order_id = req.body.order_id;
-    req.body.merchant_id =  process.env.MERCHANT_ID;
-    req.body.redirect_url = '/client/offers/onSuccessPayment';
-    req.body.cancel_url = '/client/offers/cancelThePayment';
-    req.body.language = 'EN';
-
-    const errors = validationResult(req);
-    console.log(order_id);
-    try { 
-        if (!errors.isEmpty()) {
-            const error = new Error(`validation faild for ${errors.array()[0].param} in ${errors.array()[0].location}`);
-            error.statusCode = 422;
-            error.state = 5;
-            throw error;
-        }
-        const offer = await Offer.findById(order_id)
-            .select('order status price')
-            .populate({ path: 'order', select: 'status pay client' });
-
-        if (!offer) {
-            const error = new Error(`offer not found`);
-            error.statusCode = 404;
-            error.state = 9;
-            throw error;
-        }
-
-        if (offer.status !== 'started') {
-            const error = new Error(`offer is canceled or the offer is ended`);
-            error.statusCode = 409;
-            error.state = 19;
-            throw error;
-        }
-        if (offer.order.status !== 'started') {
-            const error = new Error(`order is canceled or the order is ended`);
-            error.statusCode = 409;
-            error.state = 19;
-            throw error;
-        }
-        if (offer.order.pay !== false) {
-            const error = new Error(`you already payed for the order`);
-            error.statusCode = 409;
-            error.state = 19;
-            throw error;
-        }
-
-        if (offer.order.client._id != req.userId) {
-            const error = new Error(`not the order owner`);
-            error.statusCode = 403;
-            error.state = 11;
-            throw error;
-        }
-
-
-        let body = '',
-        workingKey =  process.env.WORKING_KEY,	//Put in the 32-Bit key shared by CCAvenues.
-        accessCode = process.env.ACCESS_CODE,			//Put in the Access Code shared by CCAvenues.
-        encRequest = '',
-        formbody = '',
-        reqBody = '' ;
-
-         console.log(process.env.WORKING_KEY,process.env.MERCHANT_ID,process.env.ACCESS_CODE);
-
-        for (const key in req.body) {	
-            reqBody += key+'='+req.body[key]+'&';
-        }
-        console.log(reqBody);
-        encRequest = ccav.encrypt(reqBody,workingKey); 
-        formbody = '<form id="nonseamless" method="post" name="redirect" action="https://secure.ccavenue.ae/transaction/transaction.do?command=initiateTransaction"/> <input type="hidden" id="encRequest" name="encRequest" value="' + encRequest + '"><input type="hidden" name="access_code" id="access_code" value="' + accessCode + '"><script language="javascript">document.redirect.submit();</script></form>';
+    request.post({
+        headers: {'content-type' : 'application/x-www-form-urlencoded'},
+        url:     'https://secure.ccavenue.ae/transaction/getRSAKey',
+        body:    bodyData
+      }, function(error, response, body){
+         if (error) {
+            next(error) ;
+         }
+         else {
+            res.send(body)
+         }
+      });
        
-        res.writeHeader(200, {"Content-Type": "text/html"});
-        res.write(formbody);
-        res.end();
 
-    } catch (err) {
-        if (!err.statusCode) {
-            err.statusCode = 500;
-        }
-        next(err);
-    } 
 }
+
+// exports.postCreateCheckOut = async (req, res, next) => {
+
+//     const order_id = req.body.order_id;
+//     req.body.merchant_id =  process.env.MERCHANT_ID;
+//     req.body.redirect_url = '/client/offers/onSuccessPayment';
+//     req.body.cancel_url = '/client/offers/cancelThePayment';
+//     req.body.language = 'EN';
+
+//     const errors = validationResult(req);
+//     console.log(order_id);
+//     try { 
+//         if (!errors.isEmpty()) {
+//             const error = new Error(`validation faild for ${errors.array()[0].param} in ${errors.array()[0].location}`);
+//             error.statusCode = 422;
+//             error.state = 5;
+//             throw error;
+//         }
+//         const offer = await Offer.findById(order_id)
+//             .select('order status price')
+//             .populate({ path: 'order', select: 'status pay client' });
+
+//         if (!offer) {
+//             const error = new Error(`offer not found`);
+//             error.statusCode = 404;
+//             error.state = 9;
+//             throw error;
+//         }
+
+//         if (offer.status !== 'started') {
+//             const error = new Error(`offer is canceled or the offer is ended`);
+//             error.statusCode = 409;
+//             error.state = 19;
+//             throw error;
+//         }
+//         if (offer.order.status !== 'started') {
+//             const error = new Error(`order is canceled or the order is ended`);
+//             error.statusCode = 409;
+//             error.state = 19;
+//             throw error;
+//         }
+//         if (offer.order.pay !== false) {
+//             const error = new Error(`you already payed for the order`);
+//             error.statusCode = 409;
+//             error.state = 19;
+//             throw error;
+//         }
+
+//         if (offer.order.client._id != req.userId) {
+//             const error = new Error(`not the order owner`);
+//             error.statusCode = 403;
+//             error.state = 11;
+//             throw error;
+//         }
+
+
+//         let body = '',
+//         workingKey =  process.env.WORKING_KEY,	//Put in the 32-Bit key shared by CCAvenues.
+//         accessCode = process.env.ACCESS_CODE,			//Put in the Access Code shared by CCAvenues.
+//         encRequest = '',
+//         formbody = '',
+//         reqBody = '' ;
+
+//          console.log(process.env.WORKING_KEY,process.env.MERCHANT_ID,process.env.ACCESS_CODE);
+
+//         for (const key in req.body) {	
+//             reqBody += key+'='+req.body[key]+'&';
+//         }
+//         console.log(reqBody);
+//         encRequest = ccav.encrypt(reqBody,workingKey); 
+//         formbody = '<form id="nonseamless" method="post" name="redirect" action="https://secure.ccavenue.ae/transaction/transaction.do?command=initiateTransaction"/> <input type="hidden" id="encRequest" name="encRequest" value="' + encRequest + '"><input type="hidden" name="access_code" id="access_code" value="' + accessCode + '"><script language="javascript">document.redirect.submit();</script></form>';
+       
+//         res.writeHeader(200, {"Content-Type": "text/html"});
+//         res.write(formbody);
+//         res.end();
+
+//     } catch (err) {
+//         if (!err.statusCode) {
+//             err.statusCode = 500;
+//         }
+//         next(err);
+//     } 
+// }
 exports.onSuccessPayment = async (req, res, next) => {
 
         let ccavEncResponse='',

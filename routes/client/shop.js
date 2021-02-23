@@ -83,11 +83,10 @@ router.post('/offers/cancel',[
 
 //offer pay
 
-router.post('/offers/CreateCheckOut',[
+router.post('/offers/CreatePublicKey',[
     body('order_id').not().isEmpty(),
-    body('currency').not().isEmpty(),
-    body('amount').not().isEmpty(),
-],isAuth,shopController.postCreateCheckOut);
+    body('access_code').not().isEmpty(),
+],isAuth,shopController.postCreatePublicKey);
 
 router.post('/offers/onSuccessPayment'
 ,isAuth,shopController.onSuccessPayment);
