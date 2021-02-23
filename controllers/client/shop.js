@@ -860,7 +860,7 @@ exports.postCreatePublicKey = async (req, res, next) => {
         body:    bodyData
       }, function(error, response, body){
          if (error) {
-            next(error) ;
+            next(error);
          }
          else {
             res.send({

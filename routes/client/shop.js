@@ -89,10 +89,9 @@ router.post('/offers/CreatePublicKey',[
 ],isAuth,shopController.postCreatePublicKey);
 
 router.post('/offers/onSuccessPayment'
-,isAuth,shopController.onSuccessPayment);
+,shopController.onSuccessPayment);
 
-router.post('/offers/cancelThePayment',[
-],isAuth,shopController.cancelThePayment);
+router.post('/offers/cancelThePayment',shopController.cancelThePayment);
 
 //cash
 router.post('/offers/cashPay',[
