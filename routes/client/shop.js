@@ -91,7 +91,7 @@ router.post('/offers/CreatePublicKey',[
 router.post('/offers/onSuccessPayment'
 ,shopController.onSuccessPayment);
 
-router.post('/offers/cancelThePayment',shopController.cancelThePayment);
+router.get('/offers/cancelThePayment',shopController.cancelThePayment);
 
 //cash
 router.post('/offers/cashPay',[
