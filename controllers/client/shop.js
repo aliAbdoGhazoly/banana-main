@@ -954,16 +954,20 @@ exports.postCreatePublicKey = async (req, res, next) => {
 //     } 
 // }
 exports.onSuccessPayment =  (req, res, next) => {
+
         const ccav = new nodeCCAvenue.Configure({
             merchant_id: '47933' ,
             working_key: '5B3BC02038253AC65F2ED6BFAE2CACCD'
         });
-            const { encResp } = req.body;
-            const output = ccav.redirectResponseToJson(encResp);
-            res.status(200).json(output);
+
+        const encResp = req.body.encResp;
+        const output = ccav.redirectResponseToJson(encResp);
+        res.status(200).json({
+            output:output,
+            encResp:encResp
+        });
 
         // The 'output' variable is the CCAvenue Response in JSON Format
-
         
         // let ccavEncResponse='',
         // ccavResponse='',	
