@@ -953,29 +953,7 @@ exports.postCreatePublicKey = async (req, res, next) => {
 //     } 
 // }
 exports.onSuccessPayment = async (req, res, next) => {
-    var ccavEncResponse='',
-	ccavResponse='',	
-	workingKey = '5B3BC02038253AC65F2ED6BFAE2CACCD',	//Put in the 32-Bit key shared by CCAvenues.
-	ccavPOST = '';
-	
-        req.on('data', function (data) {
-	    ccavEncResponse += data;
-	    ccavPOST =  qs.parse(ccavEncResponse);
-	    var encryption = ccavPOST.encResp;
-	    ccavResponse = ccav.decrypt(encryption,workingKey);
-        });
-
-	req.on('end', function () {
-	    var pData = '';
-	    pData = '<table border=1 cellspacing=2 cellpadding=2><tr><td>'	
-	    pData = pData + ccavResponse.replace(/=/gi,'</td><td>')
-	    pData = pData.replace(/&/gi,'</td></tr><tr><td>')
-	    pData = pData + '</td></tr></table>'
-            htmlcode = '<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>finished</title></head><body><h1>finished</h1><center><font size="4" color="blue"><b>Response Page</b></font><br>'+ pData +'</center><br></body></html>';
-            res.writeHeader(200, {"Content-Type": "text/html"});
-	    res.write(htmlcode);
-	    res.end();
-	}); 
+    
 
         // let ccavEncResponse='',
         // ccavResponse='',	
@@ -986,14 +964,18 @@ exports.onSuccessPayment = async (req, res, next) => {
         // const { encResp } = req.body;
         // ccavResponse = ccav.decrypt(encryption,workingKey);
         // ccavResponse.split('&').map(i => i.split('=')).forEach(j => responseData[j[0].trim()] = j[1])
+                    return  res.status(200).json({
+                        responseData: req
+                    });
+            
 
-        //     res.statusCode  = 200;
-        //     res.setHeader('Content-Type', 'application/json');                   
-        //     res.end(JSON.stringify({
-        //         encResp: encResp,
-        //         decResp: ccavResponse,
-        //         jsonData: responseData
-        //     }));
+            // res.statusCode  = 200;
+            // res.setHeader('Content-Type', 'application/json');                   
+            // res.end(JSON.stringify({
+            //     encResp: encResp,
+            //     decResp: ccavResponse,
+            //     jsonData: responseData
+            // }));
 
 
         // req.on('end', async () => {
