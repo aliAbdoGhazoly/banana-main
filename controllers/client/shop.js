@@ -3,6 +3,7 @@ var mongoose = require('mongoose');
 const qs = require('querystring');
 ccav = require('../../helpers/ccavutil');
 const request = require('request')
+const nodeCCAvenue = require('node-ccavenue');
 
 const Products = require('../../models/products');
 const ClientProduct = require('../../models/clientProducts');
@@ -952,9 +953,18 @@ exports.postCreatePublicKey = async (req, res, next) => {
 //         next(err);
 //     } 
 // }
-exports.onSuccessPayment = async (req, res, next) => {
-    
+exports.onSuccessPayment =  (req, res, next) => {
+        const ccav = new nodeCCAvenue.Configure({
+            merchant_id: '47933' ,
+            working_key: '5B3BC02038253AC65F2ED6BFAE2CACCD'
+        });
+            const { encResp } = req.body;
+            const output = ccav.redirectResponseToJson(encResp);
+            res.status(200).json(output);
 
+        // The 'output' variable is the CCAvenue Response in JSON Format
+
+        
         // let ccavEncResponse='',
         // ccavResponse='',	
         // workingKey = process.env.WORKING_KEY,	//Put in the 32-Bit key shared by CCAvenues.
@@ -964,11 +974,8 @@ exports.onSuccessPayment = async (req, res, next) => {
         // const { encResp } = req.body;
         // ccavResponse = ccav.decrypt(encryption,workingKey);
         // ccavResponse.split('&').map(i => i.split('=')).forEach(j => responseData[j[0].trim()] = j[1])
-                    return  res.status(200).json({
-                        responseData: req
-                    });
-            
 
+            
             // res.statusCode  = 200;
             // res.setHeader('Content-Type', 'application/json');                   
             // res.end(JSON.stringify({
@@ -1587,8 +1594,10 @@ exports.walletPayment = async (req, res, next) => {
     }
 }
 
-exports.cancelThePayment = async (req, res, next) => {
-    res.redirect('/products/1');
+exports.cancelThePayment =  (req, res, next) => {
+    res.send({
+        error:'offer canceled'
+    });
 }
 //cancel coming order
 
