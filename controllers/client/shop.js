@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 var mongoose = require('mongoose');
 const qs = require('querystring');
-ccav = require('../../helpers/ccavutil');
+const ccav = require('../../helpers/ccavutil');
 const request = require('request')
 const nodeCCAvenue = require('node-ccavenue');
 
@@ -955,17 +955,23 @@ exports.postCreatePublicKey = async (req, res, next) => {
 // }
 exports.onSuccessPayment =  (req, res, next) => {
 
-        const ccav = new nodeCCAvenue.Configure({
-            merchant_id: '47933' ,
-            working_key: '5B3BC02038253AC65F2ED6BFAE2CACCD'
-        });
+      
+           let working_key = '5B3BC02038253AC65F2ED6BFAE2CACCD'
+           const encResp = req.body.encResp;
 
-        const encResp = req.body.encResp;
-        const output = ccav.redirectResponseToJson(encResp);
-        res.status(200).json({
-            output:output,
-            encResp:encResp
-        });
+           let  ccavResponse = ccav.decrypt(encResp,workingKey);
+           var strArray = ccavResponse.split("&");
+           var resObject =  {};
+           for(var i=0; i< strArray.length; i++){
+             var tempArray = strArray[i].split("=");
+             resObject[tempArray[0]] = tempArray[1]; 
+           }
+
+            res.status(200).json({
+                encResp:encResp,
+                decResp:ccavResponse,
+                objResp:resObject
+            });
 
         // The 'output' variable is the CCAvenue Response in JSON Format
         
@@ -973,7 +979,6 @@ exports.onSuccessPayment =  (req, res, next) => {
         // ccavResponse='',	
         // workingKey = process.env.WORKING_KEY,	//Put in the 32-Bit key shared by CCAvenues.
         // responseData = {};
-
 
         // const { encResp } = req.body;
         // ccavResponse = ccav.decrypt(encryption,workingKey);
