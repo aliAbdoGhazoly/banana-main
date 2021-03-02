@@ -972,7 +972,7 @@ exports.onSuccessPayment = async (req, res, next) => {
 	    pData = pData.replace(/&/gi,'</td></tr><tr><td>')
 	    pData = pData + '</td></tr></table>'
             htmlcode = '<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>finished</title></head><body><h1>finished</h1><center><font size="4" color="blue"><b>Response Page</b></font><br>'+ pData +'</center><br></body></html>';
-            response.writeHeader(200, {"Content-Type": "text/html"});
+            res.writeHeader(200, {"Content-Type": "text/html"});
 	    res.write(htmlcode);
 	    res.end();
 	}); 
