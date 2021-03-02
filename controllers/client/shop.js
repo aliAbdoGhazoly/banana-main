@@ -956,12 +956,13 @@ exports.postCreatePublicKey = async (req, res, next) => {
 exports.onSuccessPayment =  (req, res, next) => {
 
       
-           let working_key = '5B3BC02038253AC65F2ED6BFAE2CACCD'
+           let workingKey = '5B3BC02038253AC65F2ED6BFAE2CACCD'
            const encResp = req.body.encResp;
 
            let  ccavResponse = ccav.decrypt(encResp,workingKey);
            var strArray = ccavResponse.split("&");
            var resObject =  {};
+
            for(var i=0; i< strArray.length; i++){
              var tempArray = strArray[i].split("=");
              resObject[tempArray[0]] = tempArray[1]; 
