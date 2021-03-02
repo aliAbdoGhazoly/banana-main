@@ -86,7 +86,7 @@ router.post('/offers/cancel',[
 router.post('/offers/CreatePublicKey',[
     body('order_id').not().isEmpty(),
     body('access_code').not().isEmpty(),
-],isAuth,shopController.postCreatePublicKey);
+],shopController.postCreatePublicKey);
 
 router.post('/offers/onSuccessPayment'
 ,shopController.onSuccessPayment);

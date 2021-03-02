@@ -846,7 +846,7 @@ exports.postCancelOffer = async (req, res, next) => {
 //     } 
 // }
 exports.postCreatePublicKey = async (req, res, next) => {
-    
+   
     var data = [];
     var bodyData = '';
 
@@ -856,17 +856,14 @@ exports.postCreatePublicKey = async (req, res, next) => {
 
     request.post({
         headers: {'content-type' : 'application/x-www-form-urlencoded'},
-        url:     'https://secure.ccavenue.ae/transaction/getRSAKey',
+        url: 'https://secure.ccavenue.ae/transaction/getRSAKey',
         body:    bodyData
       }, function(error, response, body){
          if (error) {
             next(error);
          }
          else {
-            res.send({
-                body:body,
-                response:response
-            })
+            res.send(body)
          }
       });
        
@@ -960,97 +957,100 @@ exports.onSuccessPayment = async (req, res, next) => {
         let ccavEncResponse='',
         ccavResponse='',	
         workingKey = process.env.WORKING_KEY,	//Put in the 32-Bit key shared by CCAvenues.
-        ccavPOST = '';
         responseData = {};
 
-        req.on('data', function (data) {
-        ccavEncResponse += data;
-        ccavPOST =  qs.parse(ccavEncResponse);
-        var encryption = ccavPOST.encResp;
+
+        const { encResp } = req.body;
         ccavResponse = ccav.decrypt(encryption,workingKey);
         ccavResponse.split('&').map(i => i.split('=')).forEach(j => responseData[j[0].trim()] = j[1])
-        });
 
-        req.on('end', async () => {
-            if (responseData.order_status && responseData.order_status == 'Success') {
-                const offerId = responseData.order_id
-                try {    
-                    const offer = await Offer.findById(offerId)
-                    .populate({ path: 'seller', select: 'FCMJwt sendNotfication' })
+            res.statusCode  = 200;
+            res.setHeader('Content-Type', 'application/json');                   
+            res.end(JSON.stringify({
+                encResp: encResp,
+                decResp: ccavResponse,
+                jsonData: responseData
+            }));
+        // req.on('end', async () => {
+        //     if (responseData.order_status && responseData.order_status == 'Success') {
+        //         const offerId = responseData.order_id
+        //         try {    
+        //             const offer = await Offer.findById(offerId)
+        //             .populate({ path: 'seller', select: 'FCMJwt sendNotfication' })
             
-                    if (!offer) {
-                        const error = new Error(`offer not found`);
-                        error.statusCode = 404;
-                        error.state = 9;
-                        throw error;
-                    }
-                    offer.selected = true;
-                    const order = await Order.findById(offer.order);
-                    if (!order) {
-                        const error = new Error(`order not found`);
-                        error.statusCode = 404;
-                        error.state = 9;
-                        throw error;
-                    }
+        //             if (!offer) {
+        //                 const error = new Error(`offer not found`);
+        //                 error.statusCode = 404;
+        //                 error.state = 9;
+        //                 throw error;
+        //             }
+        //             offer.selected = true;
+        //             const order = await Order.findById(offer.order);
+        //             if (!order) {
+        //                 const error = new Error(`order not found`);
+        //                 error.statusCode = 404;
+        //                 error.state = 9;
+        //                 throw error;
+        //             }
             
-                    await Offer.updateMany({ order: order._id }, { status: 'ended' });
-                    order.pay = true;
-                    const p = new Pay({
-                        offer: offer._id,
-                        order: order._id,
-                        client: req.userId,
-                        seller: offer.seller,
-                        payId: body.id,
-                    });
-            
-            
-                    //saving
-                    await order.endOrder();
-                    await offer.save();
-                    await p.save();
+        //             await Offer.updateMany({ order: order._id }, { status: 'ended' });
+        //             order.pay = true;
+        //             const p = new Pay({
+        //                 offer: offer._id,
+        //                 order: order._id,
+        //                 client: req.userId,
+        //                 seller: offer.seller,
+        //                 payId: body.id,
+        //             });
             
             
-                    if (offer.seller.sendNotfication.all == true && offer.seller.sendNotfication.orderStatus == true) {
-                        const notification = {
-                            title_ar: 'تم الموافقة',
-                            body_ar: "وافق العميل على طلبك",
-                            title_en: 'Been approved',
-                            body_en: 'The customer accepted your offer',
-                            title_urdu: 'منظور کر لیا گیا',
-                            body_urdu: 'گاہک نے آپ کی پیش کش قبول کرلی'
+        //             //saving
+        //             await order.endOrder();
+        //             await offer.save();
+        //             await p.save();
             
-                        };
-                        const data = {
-                            id: offer._id.toString(),
-                            key: '1',
-                        };
             
-                        await sendNotfication.send(data, notification, [offer.seller], 'seller');
-                    }
+        //             if (offer.seller.sendNotfication.all == true && offer.seller.sendNotfication.orderStatus == true) {
+        //                 const notification = {
+        //                     title_ar: 'تم الموافقة',
+        //                     body_ar: "وافق العميل على طلبك",
+        //                     title_en: 'Been approved',
+        //                     body_en: 'The customer accepted your offer',
+        //                     title_urdu: 'منظور کر لیا گیا',
+        //                     body_urdu: 'گاہک نے آپ کی پیش کش قبول کرلی'
             
-                    res.statusCode  = 200;
-                    res.setHeader('Content-Type', 'application/json');                   
-                    res.end(JSON.stringify({
-                        state: 1,
-                        message: 'payment created',
-                        paymentStatusCode: responseData.order_status
-                    }));
+        //                 };
+        //                 const data = {
+        //                     id: offer._id.toString(),
+        //                     key: '1',
+        //                 };
             
-                    } catch (err) {
-                    if (!err.statusCode) {
-                        err.statusCode = 500;
-                    }
-                    next(err);
-                    }
-            } else {
-                const error = new Error(`make the payment first`);
-                error.statusCode = 404;
-                error.state = 9;
-                next(error) ;
-            }
+        //                 await sendNotfication.send(data, notification, [offer.seller], 'seller');
+        //             }
+            
+        //             res.statusCode  = 200;
+        //             res.setHeader('Content-Type', 'application/json');                   
+        //             res.end(JSON.stringify({
+        //                 state: 1,
+        //                 message: 'payment created',
+        //                 paymentStatusCode: responseData.order_status
+        //             }));
+            
+        //             } catch (err) {
+        //             if (!err.statusCode) {
+        //                 err.statusCode = 500;
+        //             }
+        //             next(err);
+        //             }
+        //     } else {
+        //         const error = new Error(`make the payment first`);
+        //         error.statusCode = 404;
+        //         error.state = 9;
+        //         next(error) ;
+        //     }
 
 
-        })
+        // })
 
 
        
