@@ -953,14 +953,77 @@ exports.postCreatePublicKey = async (req, res, next) => {
 //         next(err);
 //     } 
 // }
-exports.onSuccessPayment =  (req, res, next) => {
+exports.onSuccessPayment = async (req, res, next) => {
 
-      
-           let workingKey = '5B3BC02038253AC65F2ED6BFAE2CACCD'
-           const encResp = req.body.encResp;
 
-           let  ccavResponse = ccav.decrypt(encResp,workingKey);
-           
+    let workingKey = process.env.WORKING_KEY
+    const encResp = req.body.encResp;
+
+    let  ccavResponse = ccav.decrypt(encResp,workingKey);
+
+    var strArray = ccavResponse.split("&");  
+
+    var resObject =  {};
+    for(var i=0; i< strArray.length; i++){
+    var tempArray = strArray[i].split("=");
+    resObject[tempArray[0]] = tempArray[1]; 
+    }
+
+if (resObject.order_status && resObject.order_status == 'Success') {
+    const offerId = resObject.order_id          
+        try {    
+            const offer = await Offer.findById(offerId)
+            .populate({ path: 'seller', select: 'FCMJwt sendNotfication' })
+    
+            if (!offer) {
+                const error = new Error(`offer not found`);
+                error.statusCode = 404;
+                error.state = 9;
+                throw error;
+            }
+            offer.selected = true;
+            const order = await Order.findById(offer.order);
+            if (!order) {
+                const error = new Error(`order not found`);
+                error.statusCode = 404;
+                error.state = 9;
+                throw error;
+            }
+    
+            await Offer.updateMany({ order: order._id }, { status: 'ended' });
+            order.pay = true;
+            const p = new Pay({
+                offer: offer._id,
+                order: order._id,
+                client: req.userId,
+                seller: offer.seller,
+                payId: body.id,
+            });
+    
+    
+            //saving
+            await order.endOrder();
+            await offer.save();
+            await p.save();
+    
+    
+            if (offer.seller.sendNotfication.all == true && offer.seller.sendNotfication.orderStatus == true) {
+                const notification = {
+                    title_ar: 'تم الموافقة',
+                    body_ar: "وافق العميل على طلبك",
+                    title_en: 'Been approved',
+                    body_en: 'The customer accepted your offer',
+                    title_urdu: 'منظور کر لیا گیا',
+                    body_urdu: 'گاہک نے آپ کی پیش کش قبول کرلی'
+    
+                };
+                const data = {
+                    id: offer._id.toString(),
+                    key: '1',
+                };
+    
+                await sendNotfication.send(data, notification, [offer.seller], 'seller');
+            }
 
             var pData = '';
             pData = '<table border=1 cellspacing=2 cellpadding=2><tr><td>'	
@@ -971,214 +1034,24 @@ exports.onSuccessPayment =  (req, res, next) => {
             res.writeHeader(200, {"Content-Type": "text/html"});
             res.write(htmlcode);
             res.end();
+    
+            } catch (err) {
+            if (!err.statusCode) {
+                err.statusCode = 500;
+            }
+            next(err);
+            }
+            } else {
+                res.send('make the payment first')
+            }
 
-        // The 'output' variable is the CCAvenue Response in JSON Format
-        
-        // let ccavEncResponse='',
-        // ccavResponse='',	
-        // workingKey = process.env.WORKING_KEY,	//Put in the 32-Bit key shared by CCAvenues.
-        // responseData = {};
-
-        // const { encResp } = req.body;
-        // ccavResponse = ccav.decrypt(encryption,workingKey);
-        // ccavResponse.split('&').map(i => i.split('=')).forEach(j => responseData[j[0].trim()] = j[1])
-
-            
-            // res.statusCode  = 200;
-            // res.setHeader('Content-Type', 'application/json');                   
-            // res.end(JSON.stringify({
-            //     encResp: encResp,
-            //     decResp: ccavResponse,
-            //     jsonData: responseData
-            // }));
-
-
-        // req.on('end', async () => {
-        //     if (responseData.order_status && responseData.order_status == 'Success') {
-        //         const offerId = responseData.order_id
-        //         try {    
-        //             const offer = await Offer.findById(offerId)
-        //             .populate({ path: 'seller', select: 'FCMJwt sendNotfication' })
-            
-        //             if (!offer) {
-        //                 const error = new Error(`offer not found`);
-        //                 error.statusCode = 404;
-        //                 error.state = 9;
-        //                 throw error;
-        //             }
-        //             offer.selected = true;
-        //             const order = await Order.findById(offer.order);
-        //             if (!order) {
-        //                 const error = new Error(`order not found`);
-        //                 error.statusCode = 404;
-        //                 error.state = 9;
-        //                 throw error;
-        //             }
-            
-        //             await Offer.updateMany({ order: order._id }, { status: 'ended' });
-        //             order.pay = true;
-        //             const p = new Pay({
-        //                 offer: offer._id,
-        //                 order: order._id,
-        //                 client: req.userId,
-        //                 seller: offer.seller,
-        //                 payId: body.id,
-        //             });
-            
-            
-        //             //saving
-        //             await order.endOrder();
-        //             await offer.save();
-        //             await p.save();
-            
-            
-        //             if (offer.seller.sendNotfication.all == true && offer.seller.sendNotfication.orderStatus == true) {
-        //                 const notification = {
-        //                     title_ar: 'تم الموافقة',
-        //                     body_ar: "وافق العميل على طلبك",
-        //                     title_en: 'Been approved',
-        //                     body_en: 'The customer accepted your offer',
-        //                     title_urdu: 'منظور کر لیا گیا',
-        //                     body_urdu: 'گاہک نے آپ کی پیش کش قبول کرلی'
-            
-        //                 };
-        //                 const data = {
-        //                     id: offer._id.toString(),
-        //                     key: '1',
-        //                 };
-            
-        //                 await sendNotfication.send(data, notification, [offer.seller], 'seller');
-        //             }
-            
-        //             res.statusCode  = 200;
-        //             res.setHeader('Content-Type', 'application/json');                   
-        //             res.end(JSON.stringify({
-        //                 state: 1,
-        //                 message: 'payment created',
-        //                 paymentStatusCode: responseData.order_status
-        //             }));
-            
-        //             } catch (err) {
-        //             if (!err.statusCode) {
-        //                 err.statusCode = 500;
-        //             }
-        //             next(err);
-        //             }
-        //     } else {
-        //         const error = new Error(`make the payment first`);
-        //         error.statusCode = 404;
-        //         error.state = 9;
-        //         next(error) ;
-        //     }
-
-
-        // })
-
-
-       
 }
-// exports.postCheckPayment = async (req, res, next) => {
-
-//     const checkoutId = req.body.checkoutId;
-//     const offerId = req.body.offerId;
-
-//     const errors = validationResult(req);
-//     try {
-//         if (!errors.isEmpty()) {
-//             const error = new Error(`validation faild for ${errors.array()[0].param} in ${errors.array()[0].location}`);
-//             error.statusCode = 422;
-//             error.state = 5;
-//             throw error;
-//         }
-
-//         const { body, status } = await pay.getStatus(checkoutId);
-
-//         const reg1 = new RegExp("^(000\.000\.|000\.100\.1|000\.[36])", "m");
-//         const reg2 = new RegExp("^(000\.400\.0[^3]|000\.400\.100)", 'm');
-//         console.log(reg1.test(body.result.code.toString()));
-//         console.log(reg2.test(body.result.code.toString()));
-//         console.log(body.result.code.toString());
-
-
-//         if (!reg1.test(body.result.code.toString()) && !reg2.test(body.result.code.toString())) {
-//             const error = new Error(`payment error`);
-//             error.statusCode = 402;
-//             error.state = 20;
-//             throw error;
-//         }
-
-//         const offer = await Offer.findById(offerId)
-//             .populate({ path: 'seller', select: 'FCMJwt sendNotfication' });
-//         if (!offer) {
-//             const error = new Error(`offer not found`);
-//             error.statusCode = 404;
-//             error.state = 9;
-//             throw error;
-//         }
-//         offer.selected = true;
-//         const order = await Order.findById(offer.order);
-//         if (!order) {
-//             const error = new Error(`order not found`);
-//             error.statusCode = 404;
-//             error.state = 9;
-//             throw error;
-//         }
-
-//         await Offer.updateMany({ order: order._id }, { status: 'ended' });
-//         order.pay = true;
-//         const p = new Pay({
-//             offer: offer._id,
-//             order: order._id,
-//             client: req.userId,
-//             seller: offer.seller,
-//             payId: body.id,
-//         });
-
-
-//         //saving
-//         await order.endOrder();
-//         await offer.save();
-//         await p.save();
-
-
-//         if (offer.seller.sendNotfication.all == true && offer.seller.sendNotfication.orderStatus == true) {
-//             const notification = {
-//                 title_ar: 'تم الموافقة',
-//                 body_ar: "وافق العميل على طلبك",
-//                 title_en: 'Been approved',
-//                 body_en: 'The customer accepted your offer',
-//                 title_urdu: 'منظور کر لیا گیا',
-//                 body_urdu: 'گاہک نے آپ کی پیش کش قبول کرلی'
-
-//             };
-//             const data = {
-//                 id: offer._id.toString(),
-//                 key: '1',
-//             };
-
-//             await sendNotfication.send(data, notification, [offer.seller], 'seller');
-//         }
-
-
-//         res.status(200).json({
-//             state: 1,
-//             message: 'message payment created',
-//             paymentStatusCode: body.result.code.toString()
-//         });
-
-//     } catch (err) {
-//         if (!err.statusCode) {
-//             err.statusCode = 500;
-//         }
-//         next(err);
-//     }
-// }
 
 exports.cashPayment = async (req, res, next) => {
 
     const offerId = req.body.offerId;
-
     const errors = validationResult(req);
+
     try {
         if (!errors.isEmpty()) {
             const error = new Error(`validation faild for ${errors.array()[0].param} in ${errors.array()[0].location}`);
@@ -1286,199 +1159,67 @@ exports.cashPayment = async (req, res, next) => {
 //wallet 
 exports.postPayToWalletCreateCheckOut = async (req, res, next) => {
 
-    req.body.order_id = '1';
-    req.body.merchant_id = '47933';
-    req.body.redirect_url = '/client/wallet/onSuccessAddingToWallet';
-    req.body.cancel_url = '/client/wallet/cancelThePayment'; 
+    let workingKey = process.env.WORKING_KEY
+    const encResp = req.body.encResp;
 
-    const errors = validationResult(req);
-    try {
-        if (!errors.isEmpty()) {
-            const error = new Error(`validation faild for ${errors.array()[0].param} in ${errors.array()[0].location}`);
-            error.statusCode = 422;
-            error.state = 5;
-            throw error;
-        }
+    let  ccavResponse = ccav.decrypt(encResp,workingKey);
 
-        let body = '',
-        workingKey = '0106377AE3EC57C2911B2B072416B6AA',	//Put in the 32-Bit key shared by CCAvenues.
-        accessCode = 'AVSF03IB69AU82FSUA',			//Put in the Access Code shared by CCAvenues.
-        encRequest = '',
-        formbody = '',
-        reqBody = '' ;
+    var strArray = ccavResponse.split("&");  
 
-        for (const key in req.body) {	
-            reqBody += key+'='+req.body[key]+'&';
-        }
-        console.log(reqBody);
-        encRequest = ccav.encrypt(reqBody,workingKey); 
-        formbody = '<form id="nonseamless" method="post" name="redirect" action="https://test.ccavenue.ae/transaction/transaction.do?command=initiateTransaction"/> <input type="hidden" id="encRequest" name="encRequest" value="' + encRequest + '"><input type="hidden" name="access_code" id="access_code" value="' + accessCode + '"><script language="javascript">document.redirect.submit();</script></form>';
-       
-        res.writeHeader(200, {"Content-Type": "text/html"});
-        res.write(formbody);
-        res.end();
-
-    } catch (err) {
-        if (!err.statusCode) {
-            err.statusCode = 500;
-        }
-        next(err);
+    let resObject =  {};
+    for(var i=0; i< strArray.length; i++){
+    var tempArray = strArray[i].split("=");
+    resObject[tempArray[0]] = tempArray[1]; 
     }
-}
-// exports.postPayToWalletCreateCheckOut = async (req, res, next) => {
-
-//     const amount = req.body.amount;
-//     const errors = validationResult(req);
-//     try {
-//         if (!errors.isEmpty()) {
-//             const error = new Error(`validation faild for ${errors.array()[0].param} in ${errors.array()[0].location}`);
-//             error.statusCode = 422;
-//             error.state = 5;
-//             throw error;
-//         }
-
-//         const { body, status } = await pay.createCheckOut(Number(amount));
-
-//         res.status(200).json({
-//             state: 1,
-//             status: status,
-//             data: body,
-//         });
-
-//     } catch (err) {
-//         if (!err.statusCode) {
-//             err.statusCode = 500;
-//         }
-//         next(err);
-//     }
-// }
-
-
-
-// exports.postPayToWalletCheckPayment = async (req, res, next) => {
-
-//     const checkoutId = req.body.checkoutId;
-
-
-//     const errors = validationResult(req);
-//     try {
-//         if (!errors.isEmpty()) {
-//             const error = new Error(`validation faild for ${errors.array()[0].param} in ${errors.array()[0].location}`);
-//             error.statusCode = 422;
-//             error.state = 5;
-//             throw error;
-//         }
-
-//         const { body, status } = await pay.getStatus(checkoutId);
-
-//         const reg1 = new RegExp("^(000\.000\.|000\.100\.1|000\.[36])", "m");
-//         const reg2 = new RegExp("^(000\.400\.0[^3]|000\.400\.100)", 'm');
-
-
-
-//         if (!reg1.test(body.result.code.toString()) && !reg2.test(body.result.code.toString())) {
-//             const error = new Error(`payment error`);
-//             error.statusCode = 402;
-//             error.state = 20;
-//             throw error;
-//         }
-
-//         const client = await Client.findById(req.userId).select('wallet');
-
-//         client.wallet += Number(body.amount);
-
-//         const walletTransaction = new ClientWalet({
-//             client: req.userId,
-//             action: 'deposit',
-//             amount: Number(body.amount),
-//             method: 'visa',
-//             time: new Date().getTime().toString()
-//         });
-
-//         await walletTransaction.save();
-//         const updatedClient = await client.save();
-
-//         res.status(201).json({
-//             state: 1,
-//             data: updatedClient.wallet,
-//             message: 'added to wallet'
-//         });
-
-
-//     } catch (err) {
-//         if (!err.statusCode) {
-//             err.statusCode = 500;
-//         }
-//         next(err);
-//     }
-// }
-
-exports.onSuccessAddingToWallet = async (req, res, next) => {
-
-    let ccavEncResponse='',
-    ccavResponse='',	
-    workingKey = '0106377AE3EC57C2911B2B072416B6AA',	//Put in the 32-Bit key shared by CCAvenues.
-    ccavPOST = '';
-    responseData = {};
-
-    request.on('data', function (data) {
-    ccavEncResponse += data;
-    ccavPOST =  qs.parse(ccavEncResponse);
-    var encryption = ccavPOST.encResp;
-    ccavResponse = ccav.decrypt(encryption,workingKey);
-    ccavResponse.split('&').map(i => i.split('=')).forEach(j => responseData[j[0].trim()] = j[1])
-    });
-
-    request.on('end', async () => {
-        if (responseData.order_status == 'Success') {
-            try {  
-                   const client = await Client.findById(req.userId).select('wallet');
-                    client.wallet += Number(responseData.amount);
-            
-                    const walletTransaction = new ClientWalet({
-                        client: req.userId,
-                        action: 'deposit',
-                        amount: Number(responseData.amount),
-                        method: 'visa',
-                        time: new Date().getTime().toString()
-                    });
-            
-                    await walletTransaction.save();
-                    const updatedClient = await client.save();
-            
-                    res.statusCode  = 201;
-                    res.setHeader('Content-Type', 'application/json');                   
-                    res.end(JSON.stringify({
-                        state: 1,
-                        data: updatedClient.wallet,
-                        message: 'added to wallet'
-                    }));
-
-                 } 
-                     catch (err) {
-                            if (!err.statusCode) {
-                                err.statusCode = 500;
-                            }
-                            next(err);
-                     }
-                }        
-        else {
-            const error = new Error(`make the payment first`);
-            error.statusCode = 404;
-            error.state = 9;
-            next(error) ;
+    if (resObject.order_status && resObject.order_status == 'Success') {
+            try {       
+                const client = await Client.findById(resObject.order_id).select('wallet');
+                client.wallet += Number(resObject.amount);
+        
+                const walletTransaction = new ClientWalet({
+                    client: resObject.order_id,
+                    action: 'deposit',
+                    amount: Number(resObject.amount),
+                    method: 'visa',
+                    time: new Date().getTime().toString()
+                });
+        
+                await walletTransaction.save();
+                const updatedClient = await client.save();
+        
+                // res.status(201).json({
+                //     state: 1,
+                //     data: updatedClient.wallet,
+                //     message: 'added to wallet'
+                // });
+                var pData = '';
+                pData = '<table border=1 cellspacing=2 cellpadding=2><tr><td>'	
+                pData = pData + ccavResponse.replace(/=/gi,'</td><td>')
+                pData = pData.replace(/&/gi,'</td></tr><tr><td>')
+                pData = pData + '</td></tr></table>'
+                var htmlcode = '<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>finished</title></head><body><center><font size="4" color="blue"><b>Response Page</b></font><br>'+ pData +'</center><br></body></html>';
+                res.writeHeader(200, {"Content-Type": "text/html"});
+                res.write(htmlcode);
+                res.end();
+        
+        
+        
+            } catch (err) {
+                if (!err.statusCode) {
+                    err.statusCode = 500;
+                }
+                next(err);
+            } 
+           } else {
+                res.send('make the payment first')
+            }
         }
-
-
-    })   
-}
 
 //pay from wallet
 
 exports.walletPayment = async (req, res, next) => {
 
     const offerId = req.body.offerId;
-
     const errors = validationResult(req);
     try {
         if (!errors.isEmpty()) {

@@ -100,13 +100,8 @@ router.post('/offers/cashPay',[
 ],isAuth,shopController.cashPayment);
 
 //wallet 
-router.post('/wallet/CreateCheckOut',[
-    body('currency').not().isEmpty(),
-    body('amount').not().isEmpty(),
-],isAuth,shopController.postPayToWalletCreateCheckOut);
+router.post('/wallet/onSuccessPaymentToWallet',shopController.postPayToWalletCreateCheckOut);
 
-router.post('/wallet/onSuccessAddingToWallet',[
-],isAuth,shopController.onSuccessAddingToWallet);
 
 router.post('/wallet/cancelThePayment',[
 ],isAuth,shopController.cancelThePayment);
