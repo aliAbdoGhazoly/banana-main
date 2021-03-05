@@ -1228,8 +1228,6 @@ exports.walletPayment = async (req, res, next) => {
             error.state = 5;
             throw error;
         }
-
-
         const offer = await Offer.findById(offerId)
             .populate({ path: 'seller', select: 'FCMJwt sendNotfication' })
             .select('order status price seller')
