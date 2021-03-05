@@ -968,7 +968,7 @@ exports.onSuccessPayment = async  (req, res, next) => {
     resObject[tempArray[0]] = tempArray[1]; 
     }
 
-if (resObject.order_status && resObject.order_status == 'Success') {
+if (resObject.order_status && resObject.order_status !== 'Success') {
     const offerId = resObject.order_id  
         try {    
             const offer = await Offer.findById(offerId)
@@ -1165,7 +1165,7 @@ exports.postPayToWalletCreateCheckOut = async (req, res, next) => {
     var tempArray = strArray[i].split("=");
     resObject[tempArray[0]] = tempArray[1]; 
     }
-    if (resObject.order_status && resObject.order_status == 'Success') {
+    if (resObject.order_status && resObject.order_status !== 'Success') {
             try {       
                 const client = await Client.findById(resObject.order_id).select('wallet');
                 client.wallet += Number(resObject.amount);
