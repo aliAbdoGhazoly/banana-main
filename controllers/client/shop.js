@@ -995,7 +995,7 @@ if (resObject.order_status && resObject.order_status == 'Success') {
             const p = new Pay({
                 offer: offer._id,
                 order: order._id,
-                client: '5fac77cd2c50cc0004a720ac',
+                client: offer.client,
                 seller: offer.seller,
                 payId: resObject.tracking_id,
             });
@@ -1184,7 +1184,7 @@ exports.postPayToWalletCreateCheckOut = async (req, res, next) => {
         
             } catch (err) {
                 if (!err.statusCode) {
-                    err.statusCode = 500;
+                   err.statusCode = 500;
                 }
                 next(err);
             } 
