@@ -17,6 +17,7 @@ const Seller = require('../../models/seller');
 
 const pay = require('../../helpers/pay');
 const sendNotfication = require('../../helpers/send-notfication');
+const order = require('../../models/order');
 
 
 exports.getProducts = async (req, res, next) => {
@@ -953,24 +954,22 @@ exports.postCreatePublicKey = async (req, res, next) => {
 //         next(err);
 //     } 
 // }
-exports.onSuccessPayment = async (req, res, next) => {
+exports.onSuccessPayment = async  (req, res, next) => {
 
-
-    let workingKey = process.env.WORKING_KEY
+    let workingKey = '5B3BC02038253AC65F2ED6BFAE2CACCD'
     const encResp = req.body.encResp;
-
     let  ccavResponse = ccav.decrypt(encResp,workingKey);
-
-    var strArray = ccavResponse.split("&");  
-
-    var resObject =  {};
+    let strArray = ccavResponse.split("&");  
+    let resObject =  {};
+    let pData = ''
+    let htmlcode 
     for(var i=0; i< strArray.length; i++){
     var tempArray = strArray[i].split("=");
     resObject[tempArray[0]] = tempArray[1]; 
     }
 
 if (resObject.order_status && resObject.order_status == 'Success') {
-    const offerId = resObject.order_id          
+    const offerId = resObject.order_id  
         try {    
             const offer = await Offer.findById(offerId)
             .populate({ path: 'seller', select: 'FCMJwt sendNotfication' })
@@ -990,14 +989,15 @@ if (resObject.order_status && resObject.order_status == 'Success') {
                 throw error;
             }
     
+
             await Offer.updateMany({ order: order._id }, { status: 'ended' });
             order.pay = true;
             const p = new Pay({
                 offer: offer._id,
                 order: order._id,
-                client: req.userId,
+                client: '5fac77cd2c50cc0004a720ac',
                 seller: offer.seller,
-                payId: body.id,
+                payId: resObject.tracking_id,
             });
     
     
@@ -1023,27 +1023,22 @@ if (resObject.order_status && resObject.order_status == 'Success') {
                 };
     
                 await sendNotfication.send(data, notification, [offer.seller], 'seller');
-            }
-
-            var pData = '';
-            pData = '<table border=1 cellspacing=2 cellpadding=2><tr><td>'	
-            pData = pData + ccavResponse.replace(/=/gi,'</td><td>')
-            pData = pData.replace(/&/gi,'</td></tr><tr><td>')
-            pData = pData + '</td></tr></table>'
-            var htmlcode = '<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>finished</title></head><body><center><font size="4" color="blue"><b>Response Page</b></font><br>'+ pData +'</center><br></body></html>';
-            res.writeHeader(200, {"Content-Type": "text/html"});
-            res.write(htmlcode);
-            res.end();
-    
+            }    
             } catch (err) {
             if (!err.statusCode) {
                 err.statusCode = 500;
             }
-            next(err);
+             next(err);}
             }
-            } else {
-                res.send('make the payment first')
-            }
+                pData = '<table border=1 cellspacing=2 cellpadding=2><tr><td>'	
+                pData = pData + ccavResponse.replace(/=/gi,'</td><td>')
+                pData = pData.replace(/&/gi,'</td></tr><tr><td>')
+                pData = pData + '</td></tr></table>'
+                htmlcode = '<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>finished</title></head><body><center><font size="4" color="blue"><b>Response Page</b></font><br>'+ pData +'</center><br></body></html>';
+                res.writeHeader(200, {"Content-Type": "text/html"});
+                res.write(htmlcode);
+                res.end();
+            
 
 }
 
@@ -1159,14 +1154,13 @@ exports.cashPayment = async (req, res, next) => {
 //wallet 
 exports.postPayToWalletCreateCheckOut = async (req, res, next) => {
 
-    let workingKey = process.env.WORKING_KEY
+    let workingKey = '5B3BC02038253AC65F2ED6BFAE2CACCD'
     const encResp = req.body.encResp;
-
     let  ccavResponse = ccav.decrypt(encResp,workingKey);
-
     var strArray = ccavResponse.split("&");  
-
     let resObject =  {};
+    let pData = ''
+    let htmlcode 
     for(var i=0; i< strArray.length; i++){
     var tempArray = strArray[i].split("=");
     resObject[tempArray[0]] = tempArray[1]; 
@@ -1187,22 +1181,6 @@ exports.postPayToWalletCreateCheckOut = async (req, res, next) => {
                 await walletTransaction.save();
                 const updatedClient = await client.save();
         
-                // res.status(201).json({
-                //     state: 1,
-                //     data: updatedClient.wallet,
-                //     message: 'added to wallet'
-                // });
-                var pData = '';
-                pData = '<table border=1 cellspacing=2 cellpadding=2><tr><td>'	
-                pData = pData + ccavResponse.replace(/=/gi,'</td><td>')
-                pData = pData.replace(/&/gi,'</td></tr><tr><td>')
-                pData = pData + '</td></tr></table>'
-                var htmlcode = '<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>finished</title></head><body><center><font size="4" color="blue"><b>Response Page</b></font><br>'+ pData +'</center><br></body></html>';
-                res.writeHeader(200, {"Content-Type": "text/html"});
-                res.write(htmlcode);
-                res.end();
-        
-        
         
             } catch (err) {
                 if (!err.statusCode) {
@@ -1210,9 +1188,17 @@ exports.postPayToWalletCreateCheckOut = async (req, res, next) => {
                 }
                 next(err);
             } 
-           } else {
-                res.send('make the payment first')
-            }
+           } 
+           
+            pData = '<table border=1 cellspacing=2 cellpadding=2><tr><td>'	
+            pData = pData + ccavResponse.replace(/=/gi,'</td><td>')
+            pData = pData.replace(/&/gi,'</td></tr><tr><td>')
+            pData = pData + '</td></tr></table>'
+            htmlcode = '<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>finished</title></head><body><center><font size="4" color="blue"><b>Response Page</b></font><br>'+ pData +'</center><br></body></html>';
+            res.writeHeader(200, {"Content-Type": "text/html"});
+            res.write(htmlcode);
+            res.end();
+            
         }
 
 //pay from wallet
