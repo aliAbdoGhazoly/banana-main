@@ -1162,32 +1162,52 @@ exports.postPayToWalletCreateCheckOut = async (req, res, next) => {
     let pData = ''
     let htmlcode 
     for(var i=0; i< strArray.length; i++){
-    var tempArray = strArray[i].split("=");
-    resObject[tempArray[0]] = tempArray[1]; 
+        var tempArray = strArray[i].split("=");
+        resObject[tempArray[0]] = tempArray[1]; 
     }
-    if (resObject.order_status && resObject.order_status !== 'Success') {
-            try {       
-                const client = await Client.findById(resObject.order_id).select('wallet');
-                client.wallet += Number(resObject.amount);
-        
-                const walletTransaction = new ClientWalet({
-                    client: resObject.order_id,
-                    action: 'deposit',
-                    amount: Number(resObject.amount),
-                    method: 'visa',
-                    time: new Date().getTime().toString()
-                });
-        
-                await walletTransaction.save();
-                const updatedClient = await client.save();
-        
-        
-            } catch (err) {
+    if (resObject.order_status == 'Failure') {
+        Client.findById(resObject.order_id).select('wallet').then(client => {
+            client.wallet += Number(resObject.amount);
+            const walletTransaction = new ClientWalet({
+                client: resObject.order_id,
+                action: 'deposit',
+                amount: Number(resObject.amount),
+                method: 'visa',
+                time: new Date().getTime().toString()
+            });
+            return walletTransaction.save();
+            }).then(() => {
+                return client.save();
+            }).then(()=>{
+                console.log('done');
+            }).catch(err => {
                 if (!err.statusCode) {
-                   err.statusCode = 500;
+                    err.statusCode = 500;
                 }
                 next(err);
-            } 
+            })
+            // try {      
+            //     const client = await Client.findById(resObject.order_id).select('wallet');
+            //     client.wallet += Number(resObject.amount);
+        
+            //     const walletTransaction = new ClientWalet({
+            //         client: resObject.order_id,
+            //         action: 'deposit',
+            //         amount: Number(resObject.amount),
+            //         method: 'visa',
+            //         time: new Date().getTime().toString()
+            //     });
+        
+            //     await walletTransaction.save();
+            //     const updatedClient = await client.save();
+        
+        
+            // } catch (err) {
+            //     if (!err.statusCode) {
+            //        err.statusCode = 500;
+            //     }
+            //     next(err);
+            // } 
            } 
            
             pData = '<table border=1 cellspacing=2 cellpadding=2><tr><td>'	
