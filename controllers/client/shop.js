@@ -954,196 +954,198 @@ exports.postCreatePublicKey = async (req, res, next) => {
 //         next(err);
 //     } 
 // }
-exports.onSuccessPayment =   (req, res, next) => {
+exports.onSuccessPayment = async  (req, res, next) => {
+ 
 
-    let workingKey = '5B3BC02038253AC65F2ED6BFAE2CACCD'
-    const encResp = req.body.encResp;
-    let  ccavResponse = ccav.decrypt(encResp,workingKey);
-    let strArray = ccavResponse.split("&");  
-    let resObject =  {};
-    let pData = ''
-    let htmlcode 
-
-    for(var i=0; i< strArray.length; i++){
-    var tempArray = strArray[i].split("=");
-    resObject[tempArray[0]] = tempArray[1]; 
-    }
-
-if (resObject.order_status !== 'Success') {
-    const offerId = resObject.order_id  
-    Offer.findById(offerId)
-            .populate({ path: 'seller', select: 'FCMJwt sendNotfication' })
-              .then(offer => {
-                if (!offer) {
-                    const error = new Error(`offer not found`);
-                    error.statusCode = 404;
-                    error.state = 9;
-                    throw error;
-                }
-                offer.selected = true;
-                 Order.findById(offer.order).then(order =>{
-                    if (!order) {
-                        const error = new Error(`order not found`);
-                        error.statusCode = 404;
-                        error.state = 9;
-                        throw error;
-                    }
-                    Offer.updateMany({ order: order._id }, { status: 'ended' }).then(() => {
-                        order.pay = true;
-                        const p = new Pay({
-                            offer: offer._id,
-                            order: order._id,
-                            client: offer.client,
-                            seller: offer.seller,
-                            payId: resObject.tracking_id,
-                        });
-                        order.endOrder().then(() =>{
-                             offer.save().then(()=>{
-                                  p.save().then(()=>{
-                                    if (offer.seller.sendNotfication.all == true && offer.seller.sendNotfication.orderStatus == true) {
-                                        const notification = {
-                                            title_ar: 'تم الموافقة',
-                                            body_ar: "وافق العميل على طلبك",
-                                            title_en: 'Been approved',
-                                            body_en: 'The customer accepted your offer',
-                                            title_urdu: 'منظور کر لیا گیا',
-                                            body_urdu: 'گاہک نے آپ کی پیش کش قبول کرلی'
+// if (resObject.order_status !== 'Success') {
+    // Offer.findById(offerId)
+    //         .populate({ path: 'seller', select: 'FCMJwt sendNotfication' })
+    //           .then(offer => {
+    //             if (!offer) {
+    //                 const error = new Error(`offer not found`);
+    //                 error.statusCode = 404;
+    //                 error.state = 9;
+    //                 throw error;
+    //             }
+    //             offer.selected = true;
+    //              Order.findById(offer.order).then(order =>{
+    //                 if (!order) {
+    //                     const error = new Error(`order not found`);
+    //                     error.statusCode = 404;
+    //                     error.state = 9;
+    //                     throw error;
+    //                 }
+    //                 Offer.updateMany({ order: order._id }, { status: 'ended' }).then(() => {
+    //                     order.pay = true;
+    //                     const p = new Pay({
+    //                         offer: offer._id,
+    //                         order: order._id,
+    //                         client: offer.client,
+    //                         seller: offer.seller,
+    //                         payId: resObject.tracking_id,
+    //                     });
+    //                     order.endOrder().then(() =>{
+    //                          offer.save().then(()=>{
+    //                               p.save().then(()=>{
+    //                                 if (offer.seller.sendNotfication.all == true && offer.seller.sendNotfication.orderStatus == true) {
+    //                                     const notification = {
+    //                                         title_ar: 'تم الموافقة',
+    //                                         body_ar: "وافق العميل على طلبك",
+    //                                         title_en: 'Been approved',
+    //                                         body_en: 'The customer accepted your offer',
+    //                                         title_urdu: 'منظور کر لیا گیا',
+    //                                         body_urdu: 'گاہک نے آپ کی پیش کش قبول کرلی'
                             
-                                        };
-                                        const data = {
-                                            id: offer._id.toString(),
-                                            key: '1',
-                                        };
+    //                                     };
+    //                                     const data = {
+    //                                         id: offer._id.toString(),
+    //                                         key: '1',
+    //                                     };
                             
-                                         sendNotfication.send(data, notification, [offer.seller], 'seller').then(()=>{
-                                            pData = '<table border=1 cellspacing=2 cellpadding=2><tr><td>'	
-                                            pData = pData + ccavResponse.replace(/=/gi,'</td><td>')
-                                            pData = pData.replace(/&/gi,'</td></tr><tr><td>')
-                                            pData = pData + '</td></tr></table>'
-                                            htmlcode = '<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>finished</title></head><body><center><font size="4" color="blue"><b>Response Page</b></font><br>'+ pData +'</center><br></body></html>';
-                                            res.writeHeader(200, {"Content-Type": "text/html"});
-                                            res.write(htmlcode);
-                                            res.end();
-                                         }).catch(err => {
-                                            if (!err.statusCode) {
-                                                err.statusCode = 500;
-                                            }
-                                            next(err);
-                                        })
-                                    }  else {
-                                        pData = '<table border=1 cellspacing=2 cellpadding=2><tr><td>'	
-                                        pData = pData + ccavResponse.replace(/=/gi,'</td><td>')
-                                        pData = pData.replace(/&/gi,'</td></tr><tr><td>')
-                                        pData = pData + '</td></tr></table>'
-                                        htmlcode = '<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>finished</title></head><body><center><font size="4" color="blue"><b>Response Page</b></font><br>'+ pData +'</center><br></body></html>';
-                                        res.writeHeader(200, {"Content-Type": "text/html"});
-                                        res.write(htmlcode);
-                                        res.end();
-                                    }
-                                 }).catch(err => {
-                                    if (!err.statusCode) {
-                                        err.statusCode = 500;
-                                    }
-                                    next(err);
-                                })
-                            }).catch(err => {
-                                if (!err.statusCode) {
-                                    err.statusCode = 500;
-                                }
-                                next(err);
-                            })
-                        }).catch(err => {
-                            if (!err.statusCode) {
-                                err.statusCode = 500;
-                            }
-                            next(err);
-                        })
-                      }).catch(err => {
-                        if (!err.statusCode) {
-                            err.statusCode = 500;
-                        }
-                        next(err);
-                    })
-                  }).catch(err => {
-                    if (!err.statusCode) {
-                        err.statusCode = 500;
-                    }
-                    next(err);
-                })
-              }).catch(err => {
-                if (!err.statusCode) {
-                    err.statusCode = 500;
-                }
-                next(err);
-            })
-        // try {    
-        //     const offer = await Offer.findById(offerId)
-        //     .populate({ path: 'seller', select: 'FCMJwt sendNotfication' })
-    
-        //     if (!offer) {
-        //         const error = new Error(`offer not found`);
-        //         error.statusCode = 404;
-        //         error.state = 9;
-        //         throw error;
-        //     }
-        //     offer.selected = true;
-        //     const order = await Order.findById(offer.order);
-        //     if (!order) {
-        //         const error = new Error(`order not found`);
-        //         error.statusCode = 404;
-        //         error.state = 9;
-        //         throw error;
-        //     }
-    
+    //                                      sendNotfication.send(data, notification, [offer.seller], 'seller').then(()=>{
+    //                                         pData = '<table border=1 cellspacing=2 cellpadding=2><tr><td>'	
+    //                                         pData = pData + ccavResponse.replace(/=/gi,'</td><td>')
+    //                                         pData = pData.replace(/&/gi,'</td></tr><tr><td>')
+    //                                         pData = pData + '</td></tr></table>'
+    //                                         htmlcode = '<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>finished</title></head><body><center><font size="4" color="blue"><b>Response Page</b></font><br>'+ pData +'</center><br></body></html>';
+    //                                         res.writeHeader(200, {"Content-Type": "text/html"});
+    //                                         res.write(htmlcode);
+    //                                         res.end();
+    //                                      }).catch(err => {
+    //                                         if (!err.statusCode) {
+    //                                             err.statusCode = 500;
+    //                                         }
+    //                                         next(err);
+    //                                     })
+    //                                 }  else {
+    //                                     pData = '<table border=1 cellspacing=2 cellpadding=2><tr><td>'	
+    //                                     pData = pData + ccavResponse.replace(/=/gi,'</td><td>')
+    //                                     pData = pData.replace(/&/gi,'</td></tr><tr><td>')
+    //                                     pData = pData + '</td></tr></table>'
+    //                                     htmlcode = '<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>finished</title></head><body><center><font size="4" color="blue"><b>Response Page</b></font><br>'+ pData +'</center><br></body></html>';
+    //                                     res.writeHeader(200, {"Content-Type": "text/html"});
+    //                                     res.write(htmlcode);
+    //                                     res.end();
+    //                                 }
+    //                              }).catch(err => {
+    //                                 if (!err.statusCode) {
+    //                                     err.statusCode = 500;
+    //                                 }
+    //                                 next(err);
+    //                             })
+    //                         }).catch(err => {
+    //                             if (!err.statusCode) {
+    //                                 err.statusCode = 500;
+    //                             }
+    //                             next(err);
+    //                         })
+    //                     }).catch(err => {
+    //                         if (!err.statusCode) {
+    //                             err.statusCode = 500;
+    //                         }
+    //                         next(err);
+    //                     })
+    //                   }).catch(err => {
+    //                     if (!err.statusCode) {
+    //                         err.statusCode = 500;
+    //                     }
+    //                     next(err);
+    //                 })
+    //               }).catch(err => {
+    //                 if (!err.statusCode) {
+    //                     err.statusCode = 500;
+    //                 }
+    //                 next(err);
+    //             })
+    //           }).catch(err => {
+    //             if (!err.statusCode) {
+    //                 err.statusCode = 500;
+    //             }
+    //             next(err);
+    //         })
+        try {    
+            let workingKey = '5B3BC02038253AC65F2ED6BFAE2CACCD'
+            const encResp = req.body.encResp;
+            let  ccavResponse = ccav.decrypt(encResp,workingKey);
+            let strArray = ccavResponse.split("&");  
+            let resObject =  {};
+            let pData = ''
+            let htmlcode 
 
-        //     await Offer.updateMany({ order: order._id }, { status: 'ended' });
-        //     order.pay = true;
-        //     const p = new Pay({
-        //         offer: offer._id,
-        //         order: order._id,
-        //         client: offer.client,
-        //         seller: offer.seller,
-        //         payId: resObject.tracking_id,
-        //     });
-    
-    
-        //     //saving
-        //     await order.endOrder();
-        //     await offer.save();
-        //     await p.save();
-    
-    
-        //     if (offer.seller.sendNotfication.all == true && offer.seller.sendNotfication.orderStatus == true) {
-        //         const notification = {
-        //             title_ar: 'تم الموافقة',
-        //             body_ar: "وافق العميل على طلبك",
-        //             title_en: 'Been approved',
-        //             body_en: 'The customer accepted your offer',
-        //             title_urdu: 'منظور کر لیا گیا',
-        //             body_urdu: 'گاہک نے آپ کی پیش کش قبول کرلی'
-    
-        //         };
-        //         const data = {
-        //             id: offer._id.toString(),
-        //             key: '1',
-        //         };
-    
-        //         await sendNotfication.send(data, notification, [offer.seller], 'seller');
-        //     }    
-        //     } catch (err) {
-        //     if (!err.statusCode) {
-        //         err.statusCode = 500;
-        //     }
-        //      next(err);}
+            for(var i=0; i< strArray.length; i++){
+                var tempArray = strArray[i].split("=");
+                resObject[tempArray[0]] = tempArray[1]; 
             }
-                // pData = '<table border=1 cellspacing=2 cellpadding=2><tr><td>'	
-                // pData = pData + ccavResponse.replace(/=/gi,'</td><td>')
-                // pData = pData.replace(/&/gi,'</td></tr><tr><td>')
-                // pData = pData + '</td></tr></table>'
-                // htmlcode = '<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>finished</title></head><body><center><font size="4" color="blue"><b>Response Page</b></font><br>'+ pData +'</center><br></body></html>';
-                // res.writeHeader(200, {"Content-Type": "text/html"});
-                // res.write(htmlcode);
-                // res.end();
+            const offerId = resObject.order_id 
+            const offer = await Offer.findById(offerId)
+            .populate({ path: 'seller', select: 'FCMJwt sendNotfication' })
+    
+            if (!offer) {
+                const error = new Error(`offer not found`);
+                error.statusCode = 404;
+                error.state = 9;
+                throw error;
+            }
+            offer.selected = true;
+            const order = await Order.findById(offer.order);
+            if (!order) {
+                const error = new Error(`order not found`);
+                error.statusCode = 404;
+                error.state = 9;
+                throw error;
+            }
+    
+
+            await Offer.updateMany({ order: order._id }, { status: 'ended' });
+            order.pay = true;
+            const p = new Pay({
+                offer: offer._id,
+                order: order._id,
+                client: offer.client,
+                seller: offer.seller,
+                payId: resObject.tracking_id,
+            });
+    
+    
+            //saving
+            await order.endOrder();
+            await offer.save();
+            await p.save();
+    
+    
+            if (offer.seller.sendNotfication.all == true && offer.seller.sendNotfication.orderStatus == true) {
+                const notification = {
+                    title_ar: 'تم الموافقة',
+                    body_ar: "وافق العميل على طلبك",
+                    title_en: 'Been approved',
+                    body_en: 'The customer accepted your offer',
+                    title_urdu: 'منظور کر لیا گیا',
+                    body_urdu: 'گاہک نے آپ کی پیش کش قبول کرلی'
+    
+                };
+                const data = {
+                    id: offer._id.toString(),
+                    key: '1',
+                };
+    
+                await sendNotfication.send(data, notification, [offer.seller], 'seller');
+                pData = '<table border=1 cellspacing=2 cellpadding=2><tr><td>'	
+                pData = pData + ccavResponse.replace(/=/gi,'</td><td>')
+                pData = pData.replace(/&/gi,'</td></tr><tr><td>')
+                pData = pData + '</td></tr></table>'
+                htmlcode = '<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>finished</title></head><body><center><font size="4" color="blue"><b>Response Page</b></font><br>'+ pData +'</center><br></body></html>';
+                res.writeHeader(200, {"Content-Type": "text/html"});
+                res.write(htmlcode);
+                res.end();
+            }    
+            } catch (err) {
+            if (!err.statusCode) {
+                err.statusCode = 500;
+            }
+             next(err);
+            }
+            
+               
             
 
 }
@@ -1271,7 +1273,7 @@ exports.postPayToWalletCreateCheckOut =  (req, res, next) => {
         var tempArray = strArray[i].split("=");
         resObject[tempArray[0]] = tempArray[1]; 
     }
-    if (resObject.order_status == 'Failure') {
+    // if (resObject.order_status == 'Failure') {
         Client.findById(resObject.order_id).select('wallet').then(client => {
             client.wallet += Number(resObject.amount);
             const walletTransaction = new ClientWalet({
@@ -1322,7 +1324,7 @@ exports.postPayToWalletCreateCheckOut =  (req, res, next) => {
             //     }
             //     next(err);
             // } 
-           } 
+        //    } 
             
         }
 
