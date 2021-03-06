@@ -1152,7 +1152,7 @@ exports.cashPayment = async (req, res, next) => {
 }
 
 //wallet 
-exports.postPayToWalletCreateCheckOut = async (req, res, next) => {
+exports.postPayToWalletCreateCheckOut =  (req, res, next) => {
 
     let workingKey = '5B3BC02038253AC65F2ED6BFAE2CACCD'
     const encResp = req.body.encResp;
